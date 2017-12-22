@@ -35,26 +35,42 @@ def train():
 
   sess = tf.Session()
 
-  # Import data
-  batch = 64
-  train_data, nInputFeatures = readData(sess, FLAGS.train_data_file, batch)
+  nFolds = 10
+  aFold = 0
+  batchSize = 64
+  fileName = FLAGS.train_data_file
+
+  trainDataset, testDataset = getTrainAndTestFoldDatasets(aFold, nFolds, fileName)
+  trainDataset = trainDataset.batch(batchSize)
+  testDataset = testDataset.batch(batchSize)
+
+  aTrainIterator, trainIterator_init_op = makeDataIteratorAndInitializerOp(trainDataset)
+  aTestIterator, testIterator_init_op = makeDataIteratorAndInitializerOp(testDataset)
 
   # Input placeholders
   with tf.name_scope('input'), tf.device(deviceName):
-    x = tf.placeholder(tf.float32, [None,  nInputFeatures], name='x-input')
+    dataShape = trainDataset.output_shapes[1]
+    print(dataShape)
+    x = tf.placeholder(tf.float32, dataShape, name='x-input')
     y_ = tf.placeholder(tf.float32, [None, 1], name='y-input')
+
+  init = tf.global_variables_initializer()
+  sess.run(init)
+  sess.run([trainIterator_init_op,trainIterator_init_op])
 
   aResult = sess.run([x,y_],feed_dict=makeFeedDict(sess, x, y_, train_data))
 
   features = aResult[0]
   labels = aResult[1]
 
-  plotVariable(0,features, labels)
+  print(features[0],features[0])
+  '''
+  #plotVariable(0,features, labels)
 
 
   init = tf.global_variables_initializer()
   sess.run(init)
-
+  '''
   return
 
 ##############################################################################
