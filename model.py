@@ -1,120 +1,61 @@
-#
-# Licensed under the Apache License, Version 2.0 (the 'License');
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an 'AS IS' BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-# ==============================================================================
+from modelUtilites import *
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
-import argparse
-import os
-import sys
-
-import tensorflow as tf
-import numpy as np
-from dataManipulations import *
-from plotUtilities import *
-
-FLAGS = None
 
 deviceName = '/cpu:0'
 ##############################################################################
 ##############################################################################
 ##############################################################################
-def train():
+def fcModel(x, nNeurons):
 
-  sess = tf.Session()
+    nLayers = len(nNeurons)
+    myLayers = [x]
 
-  nFolds = 10
-  aFold = 0
-  batchSize = 64
-  fileName = FLAGS.train_data_file
+    with tf.device(deviceName):
+        for iLayer in range(1,nLayers):
+            previousLayer = myLayers[iLayer-1]
+            nInputs = nNeurons[iLayer-1]
+            layerName =  'hidden'+str(iLayer)
+            aLayer = nn_layer(previousLayer, nInputs, nNeurons[iLayer], layerName, act=tf.nn.elu)
+            myLayers.append(aLayer)
 
-  trainDataset, testDataset = getTrainAndTestFoldDatasets(aFold, nFolds, fileName)
-  trainDataset = trainDataset.batch(batchSize)
-  testDataset = testDataset.batch(batchSize)
+      lastLayer = myLayers[nLayers-1]
 
-  aTrainIterator, trainIterator_init_op = makeDataIteratorAndInitializerOp(trainDataset)
-  aTestIterator, testIterator_init_op = makeDataIteratorAndInitializerOp(testDataset)
+      with tf.name_scope('dropout'):
+         keep_prob = tf.placeholder(tf.float32)
+         #tf.summary.scalar('dropout_keep_probability', keep_prob)
+         dropped = tf.nn.dropout(lastLayer, keep_prob)
 
-  # Input placeholders
-  with tf.name_scope('input'), tf.device(deviceName):
-    dataShape = trainDataset.output_shapes[1]
-    print(dataShape)
-    x = tf.placeholder(tf.float32, dataShape, name='x-input')
-    y_ = tf.placeholder(tf.float32, [None, 1], name='y-input')
+      # Do not apply softmax activation yet, see below.
+      y = nn_layer(lastLayer, nNeurons[nLayers-1], 1, 'output', act=tf.identity)
 
-  init = tf.global_variables_initializer()
-  sess.run(init)
-  sess.run([trainIterator_init_op,trainIterator_init_op])
+      with tf.name_scope('cross_entropy'):
+          diff = tf.nn.softmax_cross_entropy_with_logits(labels=y_, logits=y)
+          lambdaLagrange = 0.01
+          modelParameters   = tf.trainable_variables()
+          lossL2 = tf.add_n([ tf.nn.l2_loss(aParam) for aParam in modelParameters
+                         if 'biases' not in aParam.name ]) * lambdaLagrange
 
-  aResult = sess.run([x,y_],feed_dict=makeFeedDict(sess, x, y_, train_data))
+      with tf.name_scope('total'):
+          cross_entropy = tf.reduce_mean(diff + lossL2)
+      tf.summary.scalar('cross_entropy', cross_entropy)
 
-  features = aResult[0]
-  labels = aResult[1]
+      with tf.name_scope('train'):
+          train_step = tf.train.AdamOptimizer(FLAGS.learning_rate).minimize(cross_entropy)
 
-  print(features[0],features[0])
-  '''
-  #plotVariable(0,features, labels)
+      with tf.name_scope('accuracy'):
+          with tf.name_scope('correct_prediction'):
+              correct_prediction = tf.equal(tf.argmax(y, 1), tf.argmax(y_, 1))
+          accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
+      tf.summary.scalar('accuracy', accuracy)
+      tf.summary.histogram('correct_prediction', correct_prediction)
 
+  # Merge all the summaries and write them out to
+  train_writer = tf.summary.FileWriter(FLAGS.log_dir + '/train', sess.graph)
+  tf.global_variables_initializer().run()
 
-  init = tf.global_variables_initializer()
-  sess.run(init)
-  '''
-  return
+  builder = tf.saved_model.builder.SavedModelBuilder(FLAGS.model_dir)
 
+  return train_step, builder
 ##############################################################################
 ##############################################################################
 ##############################################################################
-def main(_):
-
-  if tf.gfile.Exists(FLAGS.log_dir):
-    tf.gfile.DeleteRecursively(FLAGS.log_dir)
-  tf.gfile.MakeDirs(FLAGS.log_dir)
-
-  if tf.gfile.Exists(FLAGS.model_dir):
-    tf.gfile.DeleteRecursively(FLAGS.model_dir)
-
-  train()
-##############################################################################
-##############################################################################
-##############################################################################
-if __name__ == '__main__':
-  parser = argparse.ArgumentParser()
-
-  parser.add_argument('--max_epoch', type=int, default=50,
-                      help='Number of epochs')
-
-  parser.add_argument('--learning_rate', type=float, default=0.001,
-                      help='Initial learning rate')
-
-  parser.add_argument('--dropout', type=float, default=0.9,
-                      help='Keep probability for training dropout.')
-
-  parser.add_argument('--train_data_file', type=str,
-      default=os.path.join(os.getenv('PWD', './'),
-                           'data/train/train.csv'),
-      help='Directory for storing training data')
-
-  parser.add_argument('--model_dir', type=str,
-      default=os.path.join(os.getenv('PWD', './'),
-                           'model'),
-      help='Directory for storing model state')
-
-  parser.add_argument('--log_dir', type=str,
-      default=os.path.join(os.getenv('PWD', './'),
-                           'logs'),
-      help='Summaries log directory')
-  FLAGS, unparsed = parser.parse_known_args()
-
-  tf.app.run(main=main, argv=[sys.argv[0]] + unparsed)
