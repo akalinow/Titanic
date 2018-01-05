@@ -33,10 +33,11 @@ class dataManipulations:
         self.labels = labels
 
 
-    def makeCVFoldGenerator(self, nFolds):
+    def makeCVFoldGenerator(self):
 
-        foldSplitter = KFold(n_splits=nFolds)
+        foldSplitter = KFold(n_splits=self.nFolds)
         self.foldsIndexGenerator = foldSplitter.split(self.labels, self.features)
+        self.indexList = list(enumerate(self.foldsIndexGenerator))
 
     def makeDatasets(self):
 
@@ -55,39 +56,37 @@ class dataManipulations:
 
     def getCVFold(self, sess, aFold):
 
-        aCounter = 0
-        for trainIndexes, validationIndexes in self.foldsIndexGenerator:
-            print("aCounter", aCounter)
-            if aCounter==aFold:
+        if(aFold>=len(self.indexList)):
+            print("Fold too big: ",aFold," number of folds is ",self.nFolds)
+            return None
 
-                #print("validationIndexes",validationIndexes)
-                #print("trainIndexes",trainIndexes)
-                #print("train features",self.features[trainIndexes[0]])
-                #print("validation features",self.features[validationIndexes[0]])
+        trainIndexes = self.indexList[aFold][1][0]
+        validationIndexes = self.indexList[aFold][1][1]
 
-                foldFeatures = self.features[trainIndexes]
-                foldLabels = self.labels[trainIndexes]
-                feed_dict={self.features_placeholder: foldFeatures, self.labels_placeholder: foldLabels}
-                sess.run(self.trainIt_InitOp, feed_dict=feed_dict)
+        #print("validationIndexes",validationIndexes)
+        #print("trainIndexes",trainIndexes)
+        #print("train features",self.features[trainIndexes[0]])
+        #print("validation features",self.features[validationIndexes[0]])
 
-                foldFeatures = self.features[validationIndexes]
-                foldLabels = self.labels[validationIndexes]
-                feed_dict={self.features_placeholder: foldFeatures, self.labels_placeholder: foldLabels}
-                sess.run(self.validationIt_InitOp, feed_dict=feed_dict)
+        foldFeatures = self.features[trainIndexes]
+        foldLabels = self.labels[trainIndexes]
+        feed_dict={self.features_placeholder: foldFeatures, self.labels_placeholder: foldLabels}
+        sess.run(self.trainIt_InitOp, feed_dict=feed_dict)
 
-                return self.trainIterator.get_next(), self.validationIterator.get_next()
-            else:
-                aCounter+=1
+        foldFeatures = self.features[validationIndexes]
+        foldLabels = self.labels[validationIndexes]
+        feed_dict={self.features_placeholder: foldFeatures, self.labels_placeholder: foldLabels}
+        sess.run(self.validationIt_InitOp, feed_dict=feed_dict)
 
-        print("Fold too big: ",aFold," number of folds is ",nFolds)
-        return None
+        return self.trainIterator.get_next(), self.validationIterator.get_next()
 
     def __init__(self, fileName, nFolds, batchSize):
         self.fileName = fileName
         self.batchSize = batchSize
+        self.nFolds = nFolds
 
         self.getNumpyMatricesFromRawData()
-        self.makeCVFoldGenerator(nFolds)
+        self.makeCVFoldGenerator()
         self.makeDatasets()
 
         self.trainIterator, self.trainIt_InitOp = self.getDataIteratorAndInitializerOp(self.trainDataset)
@@ -96,11 +95,11 @@ class dataManipulations:
 ##############################################################################
 ##############################################################################
 ##############################################################################
-def makeFeedDict(sess, x, y_, dataIter):
+def makeFeedDict(sess, dataIter):
     aBatch = sess.run(dataIter)
-    xs = aBatch[0]
-    ys = np.reshape(aBatch[1],(-1,1))
-    return {x: xs, y_: ys}
+    x = aBatch[0]
+    y = np.reshape(aBatch[1],(-1,1))
+    return x, y
 ##############################################################################
 ##############################################################################
 ##############################################################################

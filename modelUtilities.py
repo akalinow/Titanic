@@ -60,24 +60,3 @@ def nn_layer(input_tensor, input_dim, output_dim, layer_name, act=tf.nn.relu):
 ##############################################################################
 ##############################################################################
 ##############################################################################
-def defineNetwork():
-    nHiddenNeurons = [128, 64, 32, 16]
-    nLayers = 4
-
-  with tf.device('/cpu:0'):
-      aHiddenLayer = nn_layer(x, nInputFeatures, nHiddenNeurons[0], 'hidden0',act=tf.nn.relu)
-      myLayers = [aHiddenLayer]
-      for iLayer in range(1,nLayers):
-          previousLayer = myLayers[iLayer-1]
-          aHiddenLayer = nn_layer(previousLayer, nHiddenNeurons[iLayer-1], nHiddenNeurons[iLayer], 'hidden'+str(iLayer),act=tf.nn.relu)
-          myLayers.append(aHiddenLayer)
-
-      lastLayer = myLayers[nLayers-1]
-
-      with tf.name_scope('dropout'):
-         keep_prob = tf.placeholder(tf.float32)
-         #tf.summary.scalar('dropout_keep_probability', keep_prob)
-         dropped = tf.nn.dropout(lastLayer, keep_prob)
-
-      # Do not apply softmax activation yet, see below.
-      y = nn_layer(dropped, nHiddenNeurons[nLayers-1], 1, 'output', act=tf.identity)
