@@ -71,8 +71,9 @@ def runCVFold(sess, iFold, myDataManipulations):
         #Evaluate training perormance
         result = sess.run([accuracy, cross_entropy, lossL2, y, yTrue],
         feed_dict={x: xs, yTrue: ys, keep_prob: FLAGS.dropout})
-        if(iEpoch%10==0):
-            print("Epoch: ",iEpoch,
+        if(iEpoch%10000==0):
+            print("Fold:",iFold,
+            "Epoch: ",iEpoch,
             "Accuracy: ", result[0],
             "cross entropy: ",result[1],
             "L2 loss: ",result[2])
@@ -81,14 +82,23 @@ def runCVFold(sess, iFold, myDataManipulations):
     while True:
         try:
             xs, ys = makeFeedDict(sess, aValidationIterator)
-            result = sess.run([cross_entropy, lossL2],
+            result = sess.run([accuracy, cross_entropy, lossL2],
             feed_dict={x: xs, yTrue: ys, keep_prob: 1.0})
             foldLoss = result[0] + result[1]
+            foldAccuracy = result[2]
+            print("Validation. Fold:",iFold,
+            "Accuracy: ", foldAccuracy,
+            "loss: ",foldLoss)
+
+            p = tf.nn.sigmoid(y)
+            result = sess.run([y, p, yTrue],
+            feed_dict={x: xs, yTrue: ys, keep_prob: 1.0})
+            print("Result: ",np.column_stack((result[0],result[1],result[1])))
             ########################################
         except tf.errors.OutOfRangeError:
             break
 
-    return foldLoss
+    return foldLoss, foldAccuracy
 ##############################################################################
 ##############################################################################
 ##############################################################################
@@ -99,7 +109,7 @@ def train():
     nFolds = 10
     batchSize = 64
     fileName = FLAGS.train_data_file
-    nNeurons = [7,10]
+    nNeurons = [7,16]
 
     myDataManipulations = dataManipulations(fileName, nFolds, batchSize)
 
@@ -119,18 +129,25 @@ def train():
     myWriter = tf.summary.FileWriter(FLAGS.log_dir + '/train', sess.graph)
     builder = tf.saved_model.builder.SavedModelBuilder(FLAGS.model_dir)
     ###############################################
+    '''
     ops = tf.get_default_graph().get_operations()
     for op in ops:
         print(op.name)
+    '''
+    ###############################################
 
 
     meanLoss = 0
+    meanAccuracy = 0
 
     for iFold in range(0, nFolds):
-        meanLoss += runCVFold(sess, iFold, myDataManipulations)
+        aLoss, aAccuracy = runCVFold(sess, iFold, myDataManipulations)
+        meanLoss+=aLoss
+        meanAccuracy+=aAccuracy
 
     meanLoss/=nFolds
-    print("Mean loss for ",nFolds," folds: ",meanLoss)
+    meanAccuracy/=nFolds
+    print("Mean loss for ",nFolds," folds: ",meanLoss, "mean accuracy: ",meanAccuracy)
 
     myWriter.close()
     # Save the model to disk.

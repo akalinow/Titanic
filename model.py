@@ -48,6 +48,8 @@ class Model:
 
         with tf.name_scope('accuracy'):
             y = tf.nn.sigmoid(self.myLayers[-1])
+            y = tf.greater(y,0.5)
+            y = tf.cast(y, tf.float32)
             correct_prediction = tf.equal(y, self.yTrue)
             accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
 
@@ -62,7 +64,7 @@ class Model:
         self.yTrue = yTrue
 
         self.learning_rate = learning_rate
-        self.lambdaLagrange = lambdaLagrange    
+        self.lambdaLagrange = lambdaLagrange
 
         self.addFCLayers()
         self.addDropoutLayer()

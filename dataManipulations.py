@@ -45,7 +45,7 @@ class dataManipulations:
         self.trainDataset = aDataset.batch(self.batchSize)
 
         aDataset = tf.contrib.data.Dataset.from_tensor_slices((self.features_placeholder, self.labels_placeholder))
-        self.validationDataset = aDataset.batch(self.batchSize)
+        self.validationDataset = aDataset.batch(1000*self.batchSize)
 
 
     def getDataIteratorAndInitializerOp(self, aDataset):
