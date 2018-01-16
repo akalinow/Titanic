@@ -11,6 +11,7 @@ def plotHistogram(xSurvive, xDied, xAll, name, nBins, normed, axisRange):
     plt.close(fig)
 
 
+    print(name)
     print("Pass",nPass)
     print("All",nAll)
 
@@ -24,7 +25,7 @@ def plotHistogram(xSurvive, xDied, xAll, name, nBins, normed, axisRange):
     fig = plt.figure(name)
     plt.errorbar(x, nPass, yerr=yerr, fmt='o')
 
-    print("n: ",nPass)
+    print("P: ",nPass)
     plt.title(name)
     plt.xlabel('Feature')
     plt.ylabel('Probability')
@@ -32,7 +33,7 @@ def plotHistogram(xSurvive, xDied, xAll, name, nBins, normed, axisRange):
     plt.show(block=False)
 
 
-def plotVariable(iVariable, x, y):
+def plotVariable(x, y):
 
     print (x.shape, y.shape)
 
@@ -47,7 +48,8 @@ def plotVariable(iVariable, x, y):
     allFeatures = x[allIndexes]
 
     featuresNames = ["Pclass", "Sex", "Age", "SibSp", "Parch", "Fare", "Embarked"]
-    featuresRanges = [(0,4), (-2,2), (0,100), (0,10), (0,10), (0,100), (0,5)]
+    #featuresRanges = [(0,4), (-2,2), (0,100), (0,10), (0,10), (0,100), (0,5)]
+    featuresRanges = [(-1,2), (-1,2), (-1,2), (-1,2), (-1,2), (-1,2), (-1,2)]
     nFeatures = 6
 
 
@@ -57,7 +59,7 @@ def plotVariable(iVariable, x, y):
                       xAll = allFeatures[:,iFeature],
                       name = featuresNames[iFeature],
                       nBins = 21, normed = 0,axisRange=featuresRanges[iFeature])
-        
+
 
     plt.show(block=True)
 

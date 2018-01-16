@@ -28,7 +28,9 @@ from model import *
 
 FLAGS = None
 
-deviceName = '/cpu:0'
+#deviceName = '/cpu:0'
+deviceName = '/:GPU:0'
+deviceName = None
 ##############################################################################
 ##############################################################################
 ##############################################################################
@@ -47,54 +49,91 @@ def runCVFold(sess, iFold, myDataManipulations, myTrainWriter, myValidationWrite
     mergedSummary = tf.get_default_graph().get_operation_by_name("monitor/Merge/MergeSummary").outputs[0]
 
     test = tf.get_default_graph().get_operation_by_name("model/hidden1/biases/Variable").outputs[0]
+    test = tf.nn.sigmoid(y)
 
+    aTrainIterator, aValidationIterator = myDataManipulations.getCVFold(sess, iFold)
+    numberOfBatches = myDataManipulations.numberOfBatches
     #Train
-    for iEpoch in range(0,FLAGS.max_epoch):
-        aTrainIterator, aValidationIterator = myDataManipulations.getCVFold(sess, iFold)
-        print("iEpoch",iEpoch)
-        while True:
-            try:
-                xs, ys = makeFeedDict(sess, aTrainIterator)
-
-                ########################################
-                result = sess.run([cross_entropy,test],
-                          feed_dict={x: xs, yTrue: ys, keep_prob: 1.0})
-                print("Batch1 Fold:",iFold,
-                "Epoch: ",iEpoch,
-                "cross_entropy: ", result[0],
-                "Bias: ",result[1][0])
-                ########################################
-
-                run_options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
-                run_metadata = tf.RunMetadata()
-                trainSummary, _ = sess.run([mergedSummary, train_step],
-                                            feed_dict={x: xs, yTrue: ys, keep_prob: FLAGS.dropout},
-                                            options=run_options,
-                                            run_metadata=run_metadata)
-
-                ########################################
-                result = sess.run([cross_entropy,test],
-                          feed_dict={x: xs, yTrue: ys, keep_prob: 1.0})
-                print("Batch2 Fold:",iFold,
-                "Epoch: ",iEpoch,
-                "cross_entropy: ", result[0],
-                "Bias: ",result[1][0])
-                ########################################
-
-            except tf.errors.OutOfRangeError:
-                break
-        #Evaluate training perormance
-        result = sess.run([accuracy, cross_entropy, lossL2],
-                          feed_dict={x: xs, yTrue: ys, keep_prob: 1.0})
-        iStep = iEpoch + iFold*FLAGS.max_epoch
-        myTrainWriter.add_summary(trainSummary, iStep)
-        #myTrainWriter.add_run_metadata(run_metadata, 'Step%03d' % iStep)
-        if(iEpoch%1==0):
-            print("Fold:",iFold,
+    iBatch = -1
+    iEpoch = 0
+    while True:
+        try:
+            xs, ys = makeFeedDict(sess, aTrainIterator)
+            iBatch+=1
+            iEpoch = (int)(iBatch/numberOfBatches)
+            ##Input plotting
+            '''
+            aResult = sess.run([x,yTrue],feed_dict={x: xs, yTrue: ys, keep_prob: FLAGS.dropout})
+            labels = aResult[1]
+            features = aResult[0]
+            plotVariable(features, labels)
+            return
+            '''
+            ########################################
+            '''
+            result = sess.run([cross_entropy,test],
+            feed_dict={x: xs, yTrue: ys, keep_prob: 1.0})
+            print("Batch1 Fold:",iFold,
             "Epoch: ",iEpoch,
-            "Accuracy: ", result[0],
-            "cross entropy: ",result[1],
-            "L2 loss: ",result[2])
+            "cross_entropy: ", result[0],
+            "Bias: ",result[1][0])
+            '''
+            ########################################
+            #run_options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
+            #run_metadata = tf.RunMetadata()
+            sess.run([train_step],
+            feed_dict={x: xs, yTrue: ys, keep_prob: FLAGS.dropout})
+            ########################################
+            '''
+            result = sess.run([cross_entropy,test],
+            feed_dict={x: xs, yTrue: ys, keep_prob: 1.0})
+            print("Batch2 Fold:",iFold,
+            "Epoch: ",iEpoch,
+            "cross_entropy: ", result[0],
+            "Bias: ",result[1][0])
+            '''
+            ########################################
+            #Evaluate training perormance
+            if(iEpoch%1000==0 or iEpoch==FLAGS.max_epoch - 1):
+                result = sess.run([accuracy, cross_entropy, lossL2, mergedSummary],
+                feed_dict={x: xs, yTrue: ys, keep_prob: 1.0})
+                iStep = iEpoch + iFold*FLAGS.max_epoch
+                trainSummary = result[3]
+                myTrainWriter.add_summary(trainSummary, iStep)
+
+                print("Fold:",iFold,
+                "Epoch: ",iEpoch,
+                "Accuracy: ", result[0],
+                "cross entropy: ",result[1],
+                "L2 loss: ",result[2])
+                #DEBUG
+                '''
+                result =  sess.run([x, test, yTrue],
+                feed_dict={x: xs, yTrue: ys, keep_prob: 1.0})
+                a = result[1]>0.5
+                aa = result[1]
+                b = result[2]
+                a = np.dstack((a,b))
+                aa = np.dstack((aa,b))
+                #print(a)
+                #print( (result[1]>0.5) == result[2])
+                index = (result[1]>0.5) != result[2]
+                c = a[index]
+                print(len(a), len(c))
+                #print(aa[index])
+                continue
+                labels = result[2][index]
+                labels = labelsself.reshape((-1,1))
+                features = result[0]
+
+                index = np.broadcast_to(index, features.shape)
+                features = features[index]
+                features = features.reshape((-1,7))
+
+                plotVariable(features, labels)
+                '''
+        except tf.errors.OutOfRangeError:
+            break
     #########################################
     #Evaluate performance on validation data
     foldLoss = 0
@@ -106,7 +145,7 @@ def runCVFold(sess, iFold, myDataManipulations, myTrainWriter, myValidationWrite
             foldLoss = result[1] + result[2]
             foldAccuracy = result[0]
             validationSummary = result[3]
-            iStep = (iFold+1)*FLAGS.max_epoch
+            iStep = (iFold+1)*FLAGS.max_epoch - 1
             myValidationWriter.add_summary(validationSummary, iStep)
             print("Validation. Fold:",iFold,
             "Accuracy: ", foldAccuracy,
@@ -123,45 +162,50 @@ def train():
 
     sess = tf.Session()
 
-    nFolds = 10
-    batchSize = 64
-    fileName = FLAGS.train_data_file
-    nNeurons = [7, 16]
+    print("Available devices:")
+    devices = sess.list_devices()
+    for d in devices:
+        print(d.name)
 
-    myDataManipulations = dataManipulations(fileName, nFolds, batchSize)
+    nFolds = 10
+    nEpochs = FLAGS.max_epoch
+    batchSize = 900
+    fileName = FLAGS.train_data_file
+    nNeurons = [7, 32]
+
+    myDataManipulations = dataManipulations(fileName, nFolds, nEpochs, batchSize)
 
     # Input placeholders
-    with tf.name_scope('input'), tf.device(deviceName):
+    with tf.name_scope('input'): #, tf.device(deviceName):
         x = tf.placeholder(tf.float32, name='x-input')
         yTrue = tf.placeholder(tf.float32, name='y-input')
 
-    with tf.name_scope('model'), tf.device(deviceName):
+    with tf.name_scope('model'): #, tf.device(deviceName):
         myModel = Model(x, yTrue, nNeurons, FLAGS.learning_rate, FLAGS.lambda_lagrange)
 
     init = tf.global_variables_initializer()
     sess.run(init)
     # Merge all the summaries and write them out to
-    with tf.name_scope('monitor'), tf.device(deviceName):
+    with tf.name_scope('monitor'): #, tf.device(deviceName):
         merged = tf.summary.merge_all()
     myTrainWriter = tf.summary.FileWriter(FLAGS.log_dir + '/train', sess.graph)
     myValidationWriter = tf.summary.FileWriter(FLAGS.log_dir + '/validation', sess.graph)
     builder = tf.saved_model.builder.SavedModelBuilder(FLAGS.model_dir)
     ###############################################
-
+    '''
     ops = tf.get_default_graph().get_operations()
     for op in ops:
         print(op.name)
-
+    '''
     ###############################################
     meanLoss = 0
     meanAccuracy = 0
 
     for iFold in range(0, nFolds):
-        #sess.run(init)
+        sess.run(init)
         aLoss, aAccuracy = runCVFold(sess, iFold, myDataManipulations, myTrainWriter, myValidationWriter)
         meanLoss+=aLoss
         meanAccuracy+=aAccuracy
-        break
 
     meanLoss/=nFolds
     meanAccuracy/=nFolds
@@ -174,12 +218,6 @@ def train():
     builder.add_meta_graph_and_variables(sess,[tf.saved_model.tag_constants.SERVING])
     builder.save()
     print("Model saved in file: %s" % FLAGS.model_dir)
-    '''
-    aResult = sess.run([x,y_],feed_dict=makeFeedDict(sess, x, y_, aTrainIterator))
-    labels = aResult[1]
-    features = aResult[0]
-    plotVariable(0,features, labels)
-    '''
     return
 ##############################################################################
 ##############################################################################

@@ -11,7 +11,7 @@ class Model:
             previousLayer = self.myLayers[iLayer-1]
             nInputs = self.nNeurons[iLayer-1]
             layerName =  'hidden'+str(iLayer)
-            aLayer = nn_layer(previousLayer, nInputs, self.nNeurons[iLayer], layerName, act=tf.nn.elu)
+            aLayer = nn_layer(previousLayer, nInputs, self.nNeurons[iLayer], layerName, act=tf.nn.sigmoid)
             self.myLayers.append(aLayer)
 
     def addDropoutLayer(self):

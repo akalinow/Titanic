@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 import tensorflow as tf
 from sklearn.model_selection import KFold
+from sklearn import preprocessing
 
 ##############################################################################
 ##############################################################################
@@ -23,7 +24,13 @@ class dataManipulations:
         features = np.delete(features,0,1) #Drop passager id
         features = np.delete(features,6,1) #Drop cabin number (to be used later)
 
-        print(features[0])
+        min_max_scaler = preprocessing.MinMaxScaler()
+        features = min_max_scaler.fit_transform(features)
+
+        #index = features[:,1]==0 #Male
+        #index = features[:,1]==1 #Female
+        #features = features[index]
+        #labels = labels[index]
 
         assert features.shape[0] == labels.shape[0]
 
@@ -31,7 +38,8 @@ class dataManipulations:
         self.labels_placeholder = tf.placeholder(tf.float32)
         self.features = features
         self.labels = labels
-
+        self.numberOfBatches = np.ceil(labels.shape[0]/self.batchSize)
+        self.numberOfBatches = (int)(self.numberOfBatches)
 
     def makeCVFoldGenerator(self):
 
@@ -43,6 +51,7 @@ class dataManipulations:
 
         aDataset = tf.contrib.data.Dataset.from_tensor_slices((self.features_placeholder, self.labels_placeholder))
         self.trainDataset = aDataset.batch(self.batchSize)
+        self.trainDataset = self.trainDataset.repeat(self.nEpochs)
 
         aDataset = tf.contrib.data.Dataset.from_tensor_slices((self.features_placeholder, self.labels_placeholder))
         self.validationDataset = aDataset.batch(1000*self.batchSize)
@@ -80,10 +89,11 @@ class dataManipulations:
 
         return self.trainIterator.get_next(), self.validationIterator.get_next()
 
-    def __init__(self, fileName, nFolds, batchSize):
+    def __init__(self, fileName, nFolds, nEpochs, batchSize):
         self.fileName = fileName
         self.batchSize = batchSize
         self.nFolds = nFolds
+        self.nEpochs = nEpochs
 
         self.getNumpyMatricesFromRawData()
         self.makeCVFoldGenerator()
