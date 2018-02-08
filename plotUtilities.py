@@ -31,8 +31,9 @@ def plotHistogram(xSurvive, xDied, xAll, name, nBins, normed, axisRange):
     plt.ylabel('Probability')
     plt.grid(True)
     plt.show(block=False)
-
-
+#####################################################################
+#####################################################################
+#####################################################################
 def plotVariable(x, y):
 
     print (x.shape, y.shape)
@@ -47,13 +48,12 @@ def plotVariable(x, y):
     diedFeatures = x[diedIndexes]
     allFeatures = x[allIndexes]
 
-    featuresNames = ["Pclass", "Sex", "Age", "SibSp", "Parch", "Fare", "Embarked"]
-    #featuresRanges = [(0,4), (-2,2), (0,100), (0,10), (0,10), (0,100), (0,5)]
-    featuresRanges = [(-1,2), (-1,2), (-1,2), (-1,2), (-1,2), (-1,2), (-1,2)]
-    nFeatures = 6
+    featuresNames = ["Pclass", "Sex", "Age", "SibSp", "Parch", "Fare", "Cabin", "Embarked"]
+    #featuresRanges = [(0,4), (-2,2), (0,100), (0,10), (0,10), (0,100), (-16,8), (0,5)]
+    featuresRanges = [(-1,2), (-1,2), (-1,2), (-1,2), (-1,2), (-1,2), (-1,2), (-1,2)]
+    nFeatures = 8
 
-
-    for iFeature in range(0, nFeatures+1):
+    for iFeature in range(0, nFeatures):
         plotHistogram(xSurvive = survivedFeatures[:,iFeature],
                       xDied = diedFeatures[:,iFeature],
                       xAll = allFeatures[:,iFeature],
@@ -62,9 +62,26 @@ def plotVariable(x, y):
 
 
     plt.show(block=True)
+#####################################################################
+#####################################################################
+#####################################################################
+def plotDiscriminant(modelResult, labels, plotTitle):
 
-    #plotHistogram(x = survivedFeatures[:,2], nBins = 20, normed = 0,range=(0,100))
-    #plotHistogram(x = survivedFeatures[:,3], nBins = 10, normed = 0,range=(0,10))
-    #plotHistogram(x = survivedFeatures[:,4], nBins = 10, normed = 0,range=(0,10))
-    #plotHistogram(x = survivedFeatures[:,5], nBins = 10, normed = 0,range=(0,100))
-    #plotHistogram(x = survivedFeatures[:,6], nBins = 5, normed = 0,range=(0,5))
+    survivedIndexes = labels[:,0]==1
+    diedIndexes = labels[:,0]==0
+
+    survived = modelResult[survivedIndexes]
+    died = modelResult[diedIndexes]
+
+    nBins = 10
+    axisRange = (0,1)
+
+    #print("Survived: ",survived)
+    #print("Died: ",died)
+
+    fig = plt.figure()
+    plt.hist(survived, normed = True, bins = nBins, range = axisRange, facecolor='blue', alpha=0.75)
+    plt.hist(died, normed = True, bins = nBins, range = axisRange, facecolor='red', alpha=0.75)
+    plt.title(plotTitle)
+    plt.grid(True)
+    plt.show(block=True)

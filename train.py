@@ -38,8 +38,37 @@ def runCVFold(sess, iFold, myDataManipulations, myTrainWriter, myValidationWrite
     #Fetch operations
     x = tf.get_default_graph().get_operation_by_name("input/x-input").outputs[0]
     y = tf.get_default_graph().get_operation_by_name("model/output/activation").outputs[0]
+    #y = tf.get_default_graph().get_operation_by_name("model/filter/Select").outputs[0]
+
     yTrue = tf.get_default_graph().get_operation_by_name("input/y-input").outputs[0]
     keep_prob = tf.get_default_graph().get_operation_by_name("model/dropout/Placeholder").outputs[0]
+
+    ####
+
+    ##Input plotting
+    '''
+    aTrainIterator, aValidationIterator = myDataManipulations.getCVFold(sess, iFold)
+    xs, ys = makeFeedDict(sess, aTrainIterator)
+    aResult = sess.run([x,yTrue],feed_dict={x: xs, yTrue: ys, keep_prob: FLAGS.dropout})
+    labels = aResult[1]
+    features = aResult[0]
+    plotVariable(features, labels)
+    return
+    '''
+
+    '''
+    y1 = tf.get_default_graph().get_operation_by_name("model/filter/Select").outputs[0]
+    y2 = tf.get_default_graph().get_operation_by_name("model/filter/Less").outputs[0]
+    aTrainIterator, aValidationIterator = myDataManipulations.getCVFold(sess, iFold)
+    xs, ys = makeFeedDict(sess, aTrainIterator)
+    aResult = sess.run([x,y, y1, y2],feed_dict={x: xs, yTrue: ys, keep_prob: FLAGS.dropout})
+    print("x: ",aResult[0])
+    print("y: ",aResult[1])
+    print("y1: ",aResult[2])
+    print("y2: ",aResult[3])
+    return
+    '''
+    ####
 
     train_step = tf.get_default_graph().get_operation_by_name("model/train/Adam")
     accuracy = tf.get_default_graph().get_operation_by_name("model/accuracy/Mean").outputs[0]
@@ -61,37 +90,13 @@ def runCVFold(sess, iFold, myDataManipulations, myTrainWriter, myValidationWrite
             xs, ys = makeFeedDict(sess, aTrainIterator)
             iBatch+=1
             iEpoch = (int)(iBatch/numberOfBatches)
-            ##Input plotting
-            '''
-            aResult = sess.run([x,yTrue],feed_dict={x: xs, yTrue: ys, keep_prob: FLAGS.dropout})
-            labels = aResult[1]
-            features = aResult[0]
-            plotVariable(features, labels)
-            return
-            '''
             ########################################
-            '''
-            result = sess.run([cross_entropy,test],
-            feed_dict={x: xs, yTrue: ys, keep_prob: 1.0})
-            print("Batch1 Fold:",iFold,
-            "Epoch: ",iEpoch,
-            "cross_entropy: ", result[0],
-            "Bias: ",result[1][0])
-            '''
+
             ########################################
             #run_options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
             #run_metadata = tf.RunMetadata()
             sess.run([train_step],
             feed_dict={x: xs, yTrue: ys, keep_prob: FLAGS.dropout})
-            ########################################
-            '''
-            result = sess.run([cross_entropy,test],
-            feed_dict={x: xs, yTrue: ys, keep_prob: 1.0})
-            print("Batch2 Fold:",iFold,
-            "Epoch: ",iEpoch,
-            "cross_entropy: ", result[0],
-            "Bias: ",result[1][0])
-            '''
             ########################################
             #Evaluate training perormance
             if(iEpoch%1000==0 or iEpoch==FLAGS.max_epoch - 1):
@@ -106,6 +111,12 @@ def runCVFold(sess, iFold, myDataManipulations, myTrainWriter, myValidationWrite
                 "Accuracy: ", result[0],
                 "cross entropy: ",result[1],
                 "L2 loss: ",result[2])
+                '''
+                result = sess.run([test, yTrue], feed_dict={x: xs, yTrue: ys, keep_prob: 1.0})
+                modelResult = result[0]
+                labels = result[1]
+                plotDiscriminant(modelResult, labels, "Training")
+                '''
                 #DEBUG
                 '''
                 result =  sess.run([x, test, yTrue],
@@ -150,6 +161,11 @@ def runCVFold(sess, iFold, myDataManipulations, myTrainWriter, myValidationWrite
             print("Validation. Fold:",iFold,
             "Accuracy: ", foldAccuracy,
             "loss: ",foldLoss)
+
+            result = sess.run([test, yTrue], feed_dict={x: xs, yTrue: ys, keep_prob: 1.0})
+            modelResult = result[0]
+            labels = result[1]
+            plotDiscriminant(modelResult, labels, "Validation")
             ########################################
         except tf.errors.OutOfRangeError:
             break
@@ -167,11 +183,11 @@ def train():
     for d in devices:
         print(d.name)
 
-    nFolds = 10
+    nFolds = 5
     nEpochs = FLAGS.max_epoch
     batchSize = 900
     fileName = FLAGS.train_data_file
-    nNeurons = [7, 32]
+    nNeurons = [8, 512, 512]
 
     myDataManipulations = dataManipulations(fileName, nFolds, nEpochs, batchSize)
 
@@ -198,18 +214,18 @@ def train():
         print(op.name)
     '''
     ###############################################
-    meanLoss = 0
-    meanAccuracy = 0
+    accuracyTable = np.array([])
+    lossTable = np.array([])
 
     for iFold in range(0, nFolds):
         sess.run(init)
         aLoss, aAccuracy = runCVFold(sess, iFold, myDataManipulations, myTrainWriter, myValidationWriter)
-        meanLoss+=aLoss
-        meanAccuracy+=aAccuracy
+        accuracyTable = np.append(accuracyTable, aAccuracy)
+        lossTable = np.append(lossTable, aLoss)
 
-    meanLoss/=nFolds
-    meanAccuracy/=nFolds
-    print("Mean loss for ",nFolds," folds: ",meanLoss, "mean accuracy: ",meanAccuracy)
+    print("Mean loss for ",nFolds," folds: ",np.mean(lossTable),"+-",np.std(lossTable, ddof=1),
+          "mean accuracy: ",np.mean(accuracyTable),"+-",np.std(accuracyTable,ddof=1))
+
 
     myTrainWriter.close()
     myValidationWriter.close()

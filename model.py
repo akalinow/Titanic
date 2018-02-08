@@ -11,7 +11,7 @@ class Model:
             previousLayer = self.myLayers[iLayer-1]
             nInputs = self.nNeurons[iLayer-1]
             layerName =  'hidden'+str(iLayer)
-            aLayer = nn_layer(previousLayer, nInputs, self.nNeurons[iLayer], layerName, act=tf.nn.sigmoid)
+            aLayer = nn_layer(previousLayer, nInputs, self.nNeurons[iLayer], layerName, act=tf.nn.elu)
             self.myLayers.append(aLayer)
 
     def addDropoutLayer(self):
@@ -31,11 +31,27 @@ class Model:
         aLayer = nn_layer(lastLayer, self.nNeurons[self.nLayers-1], 1, 'output', act=tf.identity)
         self.myLayers.append(aLayer)
 
+
+    def addFilterLayer(self):
+
+        firstLayer =  self.myLayers[0]
+        lastLayer = self.myLayers[-1]
+        with tf.name_scope('filter'):
+            myFilter1 =  tf.constant([[1, 1, 0, 0, 0, 0, 0]], dtype=tf.float32)#Class+Sex
+            myFilter1 = tf.transpose(myFilter1)
+            aCondition = tf.matmul(firstLayer, myFilter1)
+            aCondition = tf.less(aCondition,1.0)#Class<3, sex==female
+
+            aResult = 99*tf.cast(aCondition, tf.float32)
+            aLayer = tf.where(aCondition, aResult, lastLayer)
+            self.myLayers.append(aLayer)
+
     def defineOptimizationStrategy(self):
 
         with tf.name_scope('cross_entropy'):
             y = self.myLayers[-1]
             diff = tf.nn.sigmoid_cross_entropy_with_logits(labels=self.yTrue, logits=y)
+            #diff = tf.nn.weighted_cross_entropy_with_logits(pos_weight=1/0.2, targets=self.yTrue, logits=y)
             cross_entropy = tf.reduce_mean(diff)
         with tf.name_scope('lossL2'):
             modelParameters   = tf.trainable_variables()
@@ -69,6 +85,7 @@ class Model:
         self.addFCLayers()
         self.addDropoutLayer()
         self.addOutputLayer()
+        #self.addFilterLayer()
         self.defineOptimizationStrategy()
 ##############################################################################
 ##############################################################################
