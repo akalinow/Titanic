@@ -82,6 +82,7 @@ def runCVFold(sess, iFold, myDataManipulations, myTrainWriter, myValidationWrite
 
     aTrainIterator, aValidationIterator = myDataManipulations.getCVFold(sess, iFold)
     numberOfBatches = myDataManipulations.numberOfBatches
+
     #Train
     iBatch = -1
     iEpoch = 0
@@ -99,7 +100,7 @@ def runCVFold(sess, iFold, myDataManipulations, myTrainWriter, myValidationWrite
             feed_dict={x: xs, yTrue: ys, keep_prob: FLAGS.dropout})
             ########################################
             #Evaluate training perormance
-            if(iEpoch%1000==0 or iEpoch==FLAGS.max_epoch - 1):
+            if(iEpoch%10000==0 or iEpoch==FLAGS.max_epoch - 1):
                 result = sess.run([accuracy, cross_entropy, lossL2, mergedSummary],
                 feed_dict={x: xs, yTrue: ys, keep_prob: 1.0})
                 iStep = iEpoch + iFold*FLAGS.max_epoch
@@ -111,12 +112,12 @@ def runCVFold(sess, iFold, myDataManipulations, myTrainWriter, myValidationWrite
                 "Accuracy: ", result[0],
                 "cross entropy: ",result[1],
                 "L2 loss: ",result[2])
-                '''
+
                 result = sess.run([test, yTrue], feed_dict={x: xs, yTrue: ys, keep_prob: 1.0})
                 modelResult = result[0]
                 labels = result[1]
                 plotDiscriminant(modelResult, labels, "Training")
-                '''
+
                 #DEBUG
                 '''
                 result =  sess.run([x, test, yTrue],
@@ -183,11 +184,11 @@ def train():
     for d in devices:
         print(d.name)
 
-    nFolds = 5
+    nFolds = 2
     nEpochs = FLAGS.max_epoch
     batchSize = 900
     fileName = FLAGS.train_data_file
-    nNeurons = [8, 512, 512]
+    nNeurons = [8, 8]
 
     myDataManipulations = dataManipulations(fileName, nFolds, nEpochs, batchSize)
 

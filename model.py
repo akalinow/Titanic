@@ -51,7 +51,7 @@ class Model:
         with tf.name_scope('cross_entropy'):
             y = self.myLayers[-1]
             diff = tf.nn.sigmoid_cross_entropy_with_logits(labels=self.yTrue, logits=y)
-            #diff = tf.nn.weighted_cross_entropy_with_logits(pos_weight=1/0.2, targets=self.yTrue, logits=y)
+            #diff = tf.nn.weighted_cross_entropy_with_logits(pos_weight=1.0, targets=self.yTrue, logits=y)
             cross_entropy = tf.reduce_mean(diff)
         with tf.name_scope('lossL2'):
             modelParameters   = tf.trainable_variables()

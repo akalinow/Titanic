@@ -30,20 +30,27 @@ class dataManipulations:
             cabinId[counter] = ord(tmp)-65
         features[:,6] = cabinId
 
-        #features = np.delete(features,6,1) #Drop cabin number (to be used later)        
+        #features = np.delete(features,6,1) #Drop cabin number (to be used later)
 
         #x = np.array(features[:,2])
         #np.log(x)
         #age = np.log(age)
         #age = np.sqrt(age)
-        #features[:,2] = age
+        #["Pclass", "Sex", "Age", "SibSp", "Parch", "Fare", "Cabin", "Embarked"]
+        #features[:,0] = 0
+        features[:,2] = 0
+        features[:,3] = 0
+        features[:,4] = 0
+        features[:,5] = 0
+        features[:,6] = 0
+        features[:,7] = 0
         #print(x)
 
         min_max_scaler = preprocessing.MinMaxScaler()
         features = min_max_scaler.fit_transform(features)
 
-        #index = features[:,1]==0 #Female
-        index = features[:,1]==1 #Male
+        index = features[:,1]==0 #Female
+        #index = features[:,1]==1 #Male
         features = features[index]
         labels = labels[index]
 
@@ -51,13 +58,13 @@ class dataManipulations:
         #features = features[index]
         #labels = labels[index]
 
-        index = features[:,5]<1 #Fare
-        features = features[index]
-        labels = labels[index]
+        #index = features[:,5]<1 #Fare
+        #features = features[index]
+        #labels = labels[index]
 
-        index = features[:,2]<1 #Age
-        features = features[index]
-        labels = labels[index]
+        #index = features[:,2]<1 #Age
+        #features = features[index]
+        #labels = labels[index]
 
         assert features.shape[0] == labels.shape[0]
 
@@ -65,8 +72,6 @@ class dataManipulations:
         self.labels_placeholder = tf.placeholder(tf.float32)
         self.features = features
         self.labels = labels
-        self.numberOfBatches = np.ceil(labels.shape[0]/self.batchSize)
-        self.numberOfBatches = (int)(self.numberOfBatches)
 
     def makeCVFoldGenerator(self):
 
@@ -76,12 +81,12 @@ class dataManipulations:
 
     def makeDatasets(self):
 
-        aDataset = tf.data.Dataset.from_tensor_slices((self.features_placeholder, self.labels_placeholder))
+        aDataset = tf.contrib.data.Dataset.from_tensor_slices((self.features_placeholder, self.labels_placeholder))
         self.trainDataset = aDataset.batch(self.batchSize)
         self.trainDataset = self.trainDataset.repeat(self.nEpochs)
 
         aDataset = tf.contrib.data.Dataset.from_tensor_slices((self.features_placeholder, self.labels_placeholder))
-        self.validationDataset = aDataset.batch(1000*self.batchSize)
+        self.validationDataset = aDataset.batch(self.batchSize)
 
 
     def getDataIteratorAndInitializerOp(self, aDataset):
@@ -96,8 +101,14 @@ class dataManipulations:
             print("Fold too big: ",aFold," number of folds is ",self.nFolds)
             return None
 
-        trainIndexes = self.indexList[aFold][1][0]
-        validationIndexes = self.indexList[aFold][1][1]
+        #trainIndexes = self.indexList[aFold][1][0]
+        #validationIndexes = self.indexList[aFold][1][1]
+
+        trainIndexes = self.indexList[aFold][1][1]
+        validationIndexes = self.indexList[aFold][1][0]
+
+        self.numberOfBatches = np.ceil(len(trainIndexes)/self.batchSize)
+        self.numberOfBatches = (int)(self.numberOfBatches)
 
         #print("validationIndexes",validationIndexes)
         #print("trainIndexes",trainIndexes)

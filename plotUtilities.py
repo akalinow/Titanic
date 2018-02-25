@@ -80,8 +80,8 @@ def plotDiscriminant(modelResult, labels, plotTitle):
     #print("Died: ",died)
 
     fig = plt.figure()
-    plt.hist(survived, normed = True, bins = nBins, range = axisRange, facecolor='blue', alpha=0.75)
-    plt.hist(died, normed = True, bins = nBins, range = axisRange, facecolor='red', alpha=0.75)
+    plt.hist(survived, normed = False, bins = nBins, range = axisRange, facecolor='blue', alpha=0.75)
+    plt.hist(died, normed = False, bins = nBins, range = axisRange, facecolor='red', alpha=0.75)
     plt.title(plotTitle)
     plt.grid(True)
     plt.show(block=True)
