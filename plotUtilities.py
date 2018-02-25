@@ -67,14 +67,27 @@ def plotVariable(x, y):
 #####################################################################
 def plotDiscriminant(modelResult, labels, plotTitle):
 
-    survivedIndexes = labels[:,0]==1
-    diedIndexes = labels[:,0]==0
+    survivedIndexes = []
+    diedIndexes = []
+
+    if len(labels.shape)==1:
+        survivedIndexes = labels[:]==1
+        diedIndexes = labels[:]==0
+    else:
+        survivedIndexes = labels[:,0]==1
+        diedIndexes = labels[:,0]==0
 
     survived = modelResult[survivedIndexes]
     died = modelResult[diedIndexes]
 
     nBins = 10
     axisRange = (0,1)
+
+    truePositives = np.count_nonzero(survived>0.5)
+    trueNegatives = np.count_nonzero(died<0.5)
+    allItems = len(labels)
+    accuracy = (truePositives + trueNegatives)/allItems
+    print(plotTitle, " Accuracy: ",accuracy)
 
     #print("Survived: ",survived)
     #print("Died: ",died)
@@ -85,3 +98,5 @@ def plotDiscriminant(modelResult, labels, plotTitle):
     plt.title(plotTitle)
     plt.grid(True)
     plt.show(block=True)
+
+    return accuracy

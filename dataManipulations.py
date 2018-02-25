@@ -37,22 +37,24 @@ class dataManipulations:
         #age = np.log(age)
         #age = np.sqrt(age)
         #["Pclass", "Sex", "Age", "SibSp", "Parch", "Fare", "Cabin", "Embarked"]
-        #features[:,0] = 0
+        '''
+        features[:,0] = 0
         features[:,2] = 0
         features[:,3] = 0
         features[:,4] = 0
         features[:,5] = 0
         features[:,6] = 0
         features[:,7] = 0
+        '''
         #print(x)
 
         min_max_scaler = preprocessing.MinMaxScaler()
         features = min_max_scaler.fit_transform(features)
 
-        index = features[:,1]==0 #Female
+        #index = features[:,1]==0 #Female
         #index = features[:,1]==1 #Male
-        features = features[index]
-        labels = labels[index]
+        #features = features[index]
+        #labels = labels[index]
 
         #index = features[:,0]==0 #Class
         #features = features[index]
@@ -94,6 +96,18 @@ class dataManipulations:
         aIterator = tf.contrib.data.Iterator.from_structure(aDataset.output_types, aDataset.output_shapes)
         init_op = aIterator.make_initializer(aDataset)
         return aIterator, init_op
+
+    def getCVFoldArrays(self, aFold, isValidation):
+
+        indexes = self.indexList[aFold][1][1]
+        if isValidation:
+            indexes = self.indexList[aFold][1][0]
+
+        features = self.features[indexes]
+        labels = self.labels[indexes]
+
+        return features, labels
+
 
     def getCVFold(self, sess, aFold):
 

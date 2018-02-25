@@ -116,6 +116,9 @@ def runCVFold(sess, iFold, myDataManipulations, myTrainWriter, myValidationWrite
                 result = sess.run([test, yTrue], feed_dict={x: xs, yTrue: ys, keep_prob: 1.0})
                 modelResult = result[0]
                 labels = result[1]
+
+                print(labels)
+
                 plotDiscriminant(modelResult, labels, "Training")
 
                 #DEBUG
